@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ESP32 Relay Control Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-color: #f9f9f9;
+      --card-bg: #ffffff;
+      --text-color: #333;
+      --button-bg: #1e88e5;
+      --button-hover: #1565c0;
+      --relay-on: #43a047;
+      --relay-off: #1e88e5;
+    }
+
+    body.dark-mode {
+      --bg-color: #1f1f1f;
+      --card-bg: #2c2c2c;
+      --text-color: #f0f0f0;
+      --button-bg: #388e3c;
+      --button-hover: #2e7d32;
+      --relay-on: #66bb6a;
+      --relay-off: #42a5f5;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0 10px 40px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      justify-content: space-between;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 2rem;
+    }
+
+    .relay-container {
+      max-width: 960px;
+      margin: 20px auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .relay-card {
+      display: inline-block;
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      padding: 20px;
+      margin: 15px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      width: 220px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .relay-card h2 {
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+
+    .relay-card button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      width: 90%;
+      transition: background-color 0.3s ease, opacity 0.3s ease;
+    }
+
+    .relay-card button:hover {
+      opacity: 0.9;
+    }
+
+    #allOffBtn, #logoutBtn, #themeToggleBtn {
+      max-width: 300px;
+      width: 90%;
+      padding: 12px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 15px auto;
+      display: block;
+      color: white;
+      transition: opacity 0.3s ease, background-color 0.3s ease;
+    }
+
+    #allOffBtn {
+      background-color: #d32f2f;
+    }
+
+    #logoutBtn {
+      background-color: #757575;
+    }
+
+    #themeToggleBtn {
+      background-color: var(--button-bg);
+    }
+
+    #allOffBtn:hover,
+    #logoutBtn:hover,
+    #themeToggleBtn:hover {
+      opacity: 0.85;
+    }
+
+    #dashboard {
+      display: none;
+    }
+
+    #loginForm {
+      max-width: 400px;
+      margin: 80px auto 20px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      padding: 30px 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    #loginForm input {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0 20px;
+      font-size: 1rem;
+      border: 1.5px solid #ccc;
+      border-radius: 10px;
+      box-sizing: border-box;
+      outline-offset: 2px;
+      transition: border-color 0.3s ease;
+    }
+
+    #loginForm input:focus {
+      border-color: var(--button-bg);
+    }
+
+    #loginForm button {
+      width: 100%;
+      background-color: var(--button-bg);
+      color: white;
+      padding: 12px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #loginForm button:hover {
+      background-color: var(--button-hover);
+    }
+
+    footer {
+      font-size: 0.9rem;
+      color: #888;
+      padding: 10px 0;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 700px) {
+      .relay-card {
+        width: 90%;
+        margin: 10px auto;
+      }
+
+      body {
+        padding-bottom: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>ESP32 Relay Control Dashboard</h1>
+
+  <!-- Toggle theme button -->
+  <button id="themeToggleBtn">🌓 Toggle Theme</button>
+
+  <!-- Login form -->
+  <div id="loginForm">
+    <input type="email" id="email" placeholder="Enter Email" required />
+    <input type="password" id="password" placeholder="Enter Password" required />
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="relay-container">
+      <div class="relay-card">
+        <h2>Relay 1</h2>
+        <p>Status: <span id="status1">Loading...</span></p>
+        <button id="btn1">Toggle</button>
+      </div>
+      <div class="relay-card">
+        <h2>Relay 2</h2>
+        <p>Status: <span id="status2">Loading...</span></p>
+        <button id="btn2">Toggle</button>
+      </div>
+      <div class="relay-card">
+        <h2>Relay 3</h2>
+        <p>Status: <span id="status3">Loading...</span></p>
+        <button id="btn3">Toggle</button>
+      </div>
+      <div class="relay-card">
+        <h2>Relay 4</h2>
+        <p>Status: <span id="status4">Loading...</span></p>
+        <button id="btn4">Toggle</button>
+      </div>
+    </div>
+
+    <button id="allOffBtn">All OFF</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <footer>
+    🚀 Powered by Mohamed Eid
+  </footer>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "*****************************",
+      authDomain: "******************",
+      databaseURL: "****************************",
+      projectId: "*************************",
+      storageBucket: "******************************",
+      messagingSenderId: "*******************",
+      appId: "**********************************",
+      measurementId: "***********************"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    const allowedEmail = "********************";
+    const allowedPassword = "************";
+
+    const loginForm = document.getElementById("loginForm");
+    const dashboard = document.getElementById("dashboard");
+    const loginBtn = document.getElementById("loginBtn");
+
+    loginBtn.addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        alert("Please enter email and password.");
+        return;
+      }
+
+      if (email === allowedEmail && password === allowedPassword) {
+        firebase.auth().signInWithEmailAndPassword(email, password)
+          .then(userCredential => {
+            loginForm.style.display = "none";
+            dashboard.style.display = "block";
+            startRelayControl();
+          })
+          .catch(error => {
+            alert("Firebase login failed: " + error.message);
+          });
+      } else {
+        alert("Invalid email or password.");
+      }
+    });
+
+    function startRelayControl() {
+      const db = firebase.database();
+      const relays = [
+        { id: 1, path: "relay1" },
+        { id: 2, path: "relay2" },
+        { id: 3, path: "relay3" },
+        { id: 4, path: "relay4" }
+      ];
+
+      relays.forEach(relay => {
+        const statusText = document.getElementById(`status${relay.id}`);
+        const toggleButton = document.getElementById(`btn${relay.id}`);
+        const relayRef = db.ref("/" + relay.path);
+
+        relayRef.on("value", (snapshot) => {
+          const state = snapshot.val();
+          statusText.innerText = state ? "ON" : "OFF";
+          toggleButton.style.backgroundColor = state ? getComputedStyle(document.body).getPropertyValue('--relay-on') : getComputedStyle(document.body).getPropertyValue('--relay-off');
+        });
+
+        toggleButton.onclick = () => {
+          relayRef.get().then(snap => {
+            relayRef.set(!snap.val());
+          });
+        };
+      });
+
+      document.getElementById("allOffBtn").onclick = () => {
+        relays.forEach(relay => {
+          db.ref("/" + relay.path).set(false);
+        });
+      };
+    }
+
+    document.getElementById("logoutBtn").onclick = () => {
+      firebase.auth().signOut()
+        .then(() => {
+          dashboard.style.display = "none";
+          loginForm.style.display = "block";
+        })
+        .catch(error => {
+          alert("Logout failed: " + error.message);
+        });
+    };
+
+    // 🌗 Theme toggle
+    document.getElementById("themeToggleBtn").onclick = () => {
+      document.body.classList.toggle("dark-mode");
+    };
+  </script>
+</body>
+</html>
